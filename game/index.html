@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SOLMAR BAY — Open World</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0b1e2e; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  #scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  #hud { position: fixed; inset: 0; pointer-events: none; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.8); z-index: 5; }
+  .panel { background: rgba(8, 20, 32, .55); border: 1px solid rgba(255,255,255,.18); border-radius: 10px; }
+  #stats { position: absolute; top: 12px; left: 12px; padding: 10px 14px; font-size: 15px; line-height: 1.5; min-width: 190px; }
+  #stats .cash { color: #7dff9b; font-weight: 700; font-size: 19px; }
+  #healthbar { width: 170px; height: 10px; background: rgba(255,255,255,.25); border-radius: 5px; margin-top: 4px; overflow: hidden; }
+  #healthfill { height: 100%; width: 100%; background: linear-gradient(90deg, #37e07a, #a8f04a); border-radius: 5px; }
+  #wanted { position: absolute; top: 12px; right: 12px; padding: 8px 14px; font-size: 26px; letter-spacing: 4px; color: #ffd23e; }
+  #wanted .off { color: rgba(255,255,255,.22); }
+  #clock { position: absolute; top: 64px; right: 12px; padding: 6px 12px; font-size: 15px; font-weight: 600; }
+  #objective { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); padding: 9px 18px; font-size: 15px; max-width: 46vw; text-align: center; }
+  #objective .gold { color: #ffd23e; font-weight: 700; }
+  #minimap { position: absolute; left: 12px; bottom: 12px; border-radius: 50%; border: 3px solid rgba(255,255,255,.35); box-shadow: 0 0 0 3px rgba(0,0,0,.45); background: #12324a; }
+  #speedo { position: absolute; right: 16px; bottom: 16px; padding: 8px 14px; font-size: 15px; text-align: right; display: none; }
+  #speedo .big { font-size: 30px; font-weight: 800; line-height: 1; }
+  #ammo { position: absolute; right: 16px; bottom: 110px; padding: 6px 12px; font-size: 15px; display: none; }
+  #toast { position: absolute; left: 50%; bottom: 132px; transform: translateX(-50%); padding: 8px 18px; font-size: 16px; font-weight: 600; opacity: 0; transition: opacity .3s; white-space: nowrap; }
+  #crosshair { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; display: none; }
+  #crosshair::before, #crosshair::after { content: ""; position: absolute; background: #fff; box-shadow: 0 0 3px #000; }
+  #crosshair::before { left: 10px; top: 0; width: 2px; height: 22px; }
+  #crosshair::after { left: 0; top: 10px; width: 22px; height: 2px; }
+  #hint { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); padding: 6px 14px; font-size: 13px; opacity: .9; white-space: nowrap; }
+  #damage { position: fixed; inset: 0; pointer-events: none; box-shadow: inset 0 0 90px 30px rgba(255,0,0,.55); opacity: 0; z-index: 6; }
+  .overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(4, 12, 22, .45); z-index: 10; pointer-events: auto; }
+  .card { background: rgba(7, 22, 38, .92); border: 1px solid rgba(255,210,62,.5); border-radius: 16px; padding: 28px 36px; max-width: 640px; color: #fff; text-align: center; box-shadow: 0 18px 60px rgba(0,0,0,.6); }
+  .card h1 { margin: 0 0 4px; font-size: 52px; letter-spacing: 3px; color: #ffd23e; font-style: italic; }
+  .card h2 { margin: 0 0 14px; font-size: 17px; font-weight: 400; color: #9fd8ff; letter-spacing: 2px; }
+  .card p { font-size: 15px; line-height: 1.6; color: #dfeefc; text-align: left; }
+  .card .keys { font-size: 13px; color: #9fb8cc; text-align: left; line-height: 1.8; }
+  .card button { pointer-events: auto; cursor: pointer; margin: 8px 6px 0; padding: 12px 26px; font-size: 17px; font-weight: 700; border: none; border-radius: 10px; background: #ffd23e; color: #20242a; }
+  .card button.alt { background: #1e5f8a; color: #fff; }
+  .card .story { font-style: italic; color: #ffe9a8; }
+  #dialog { position: absolute; left: 50%; bottom: 170px; transform: translateX(-50%); max-width: 620px; padding: 12px 20px; font-size: 16px; line-height: 1.5; display: none; }
+  #dialog b { color: #ffd23e; }
+  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+</style>
+</head>
+<body>
+<canvas id="scene" aria-label="Solmar Bay: an open-world crime game. Drive, walk, steal cars, outrun the police and finish missions."></canvas>
+<div id="hud">
+  <div id="stats" class="panel"><span class="cash" id="cash">$0</span><span id="rep"></span><br><span id="healthtext">Health 100</span><div id="healthbar"><div id="healthfill"></div></div><span id="armorline"></span></div>
+  <div id="wanted" class="panel"><span id="stars">☆☆☆☆☆</span></div>
+  <div id="clock" class="panel">09:00 · SUNNY</div>
+  <div id="objective" class="panel"><span class="gold">◆</span> <span id="objtext">Welcome to Solmar Bay</span></div>
+  <canvas id="minimap" width="190" height="190"></canvas>
+  <div id="speedo" class="panel"><span class="big" id="speed">0</span> km/h<br><span id="carname"></span></div>
+  <div id="ammo" class="panel">🔫 <span id="ammotext">12 / ∞</span></div>
+  <div id="toast" class="panel"></div>
+  <div id="crosshair"></div>
+  <div id="hint" class="panel">WASD move · Mouse look · E enter car · Click shoot · R reload · M mission · P pause</div>
+  <div id="dialog" class="panel"></div>
+</div>
+<div id="damage"></div>
+<div id="startScreen" class="overlay">
+  <div class="card">
+    <h1>SOLMAR BAY</h1>
+    <h2>AN OPEN-WORLD CRIME STORY · SUN, SEA &amp; STOLEN CARS</h2>
+    <p class="story">"You washed up in Solmar Bay with $40 and a borrowed name. Rico Vane runs the
+    marina, the cops run the streets, and everybody in between owes somebody. Work the jobs,
+    steal what you need, and don't let the Solmar Bay PD catch you holding it."</p>
+    <p><b>You are Danny "Deke" Marlowe</b>, a wheelman new in town. Five jobs stand between you
+    and a clean slate: meet Rico, lift a Comet GT, lose a three-star tail, run a package across
+    town, and hit the Harbor Bank vault — then get out alive.</p>
+    <div class="keys">WASD — walk / drive &nbsp;·&nbsp; Mouse — look &nbsp;·&nbsp; E — steal / enter car &nbsp;·&nbsp; F — exit car<br>
+    Click — shoot &nbsp;·&nbsp; R — reload &nbsp;·&nbsp; Shift — sprint &nbsp;·&nbsp; Space — brake / handbrake &nbsp;·&nbsp; P — pause &nbsp;·&nbsp; M — mission info</div>
+    <button id="play">▶ START STORY</button>
+    <button id="continue" class="alt" style="display:none">↻ CONTINUE SAVE</button>
+    <button id="freeroam" class="alt">FREE ROAM</button>
+    <p style="font-size:12px;color:#8fa8bc;text-align:center">Original game — city, characters, story, art, sound &amp; music all made for this entry.<br>Progress saves automatically to this browser.</p>
+  </div>
+</div>
+<div id="pauseScreen" class="overlay" style="display:none">
+  <div class="card">
+    <h1 style="font-size:36px">PAUSED</h1>
+    <p id="pauseStats" style="text-align:center"></p>
+    <div class="keys" style="text-align:center">WASD move · E car · Click shoot · R reload · M mission · H horn · C camera</div>
+    <button id="resume">RESUME</button>
+    <button id="quitToTitle" class="alt">SAVE &amp; QUIT TO TITLE</button>
+  </div>
+</div>
+<div id="endScreen" class="overlay" style="display:none">
+  <div class="card">
+    <h1 id="endTitle" style="font-size:40px">BUSTED</h1>
+    <p id="endText" style="text-align:center"></p>
+    <button id="retry">TRY AGAIN</button>
+    <button id="endTitleBtn" class="alt">TITLE SCREEN</button>
+  </div>
+</div>
+<p id="status" role="status" aria-live="polite"></p>
+<script type="importmap">{"imports":{"three":"./vendor/three/three.module.min.js"}}</script>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
