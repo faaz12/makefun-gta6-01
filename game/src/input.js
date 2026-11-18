@@ -11,6 +11,10 @@ export const ACT_MISSION = 32;
 export const ACT_HORN = 64;
 export const ACT_CAMERA = 128;
 export const ACT_JUMP = 256;
+export const ACT_BUY1 = 512;
+export const ACT_BUY2 = 1024;
+export const ACT_BUY3 = 2048;
+export const ACT_BUY4 = 4096;
 
 const KEYS = {
   KeyW: 'up', ArrowUp: 'up',
@@ -44,6 +48,10 @@ export function createInput(canvas) {
     else if (event.code === 'KeyM') actions |= ACT_MISSION;
     else if (event.code === 'KeyH') actions |= ACT_HORN;
     else if (event.code === 'KeyC') actions |= ACT_CAMERA;
+    else if (event.code === 'Digit1') actions |= ACT_BUY1;
+    else if (event.code === 'Digit2') actions |= ACT_BUY2;
+    else if (event.code === 'Digit3') actions |= ACT_BUY3;
+    else if (event.code === 'Digit4') actions |= ACT_BUY4;
     else if (event.code === 'Space') actions |= ACT_JUMP;
   });
   window.addEventListener('keyup', (event) => {

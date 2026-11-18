@@ -13,7 +13,7 @@ export function createHud() {
     speedo: $('speedo'), speed: $('speed'), carName: $('carname'),
     ammo: $('ammo'), ammoText: $('ammotext'), toast: $('toast'),
     crosshair: $('crosshair'), hint: $('hint'), dialog: $('dialog'),
-    damage: $('damage'), minimap: $('minimap'),
+    damage: $('damage'), minimap: $('minimap'), hitmarker: $('hitmarker'),
   };
   const mapCtx = els.minimap.getContext('2d');
   const cache = {};
@@ -95,6 +95,17 @@ export function createHud() {
     for (const c of state.cars) if (c.alive && !c.police) dot(c.x, c.z, 2, '#c8d8e8');
     for (const p of state.police) if (p.alive) dot(p.x, p.z, 3, '#ff4444');
     for (const e of state.enemies || []) if (e.alive) dot(e.x, e.z, 3, '#ff8800');
+    // Shops (orange), safehouse (green), garage (blue), helicopter (red ring).
+    for (const s of state.shops || []) dot(s.x, s.z, 3, '#ff9f2e');
+    if (state.safehouse) dot(state.safehouse.x, state.safehouse.z, 3.5, '#7dff9b');
+    if (state.garage) dot(state.garage.x, state.garage.z, 3, '#6fb7ff');
+    if (state.heli) {
+      const [hx, hz] = toMap(state.heli.x, state.heli.z);
+      ctx.strokeStyle = '#ff4444';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(hx, hz, 6, 0, Math.PI * 2); ctx.stroke();
+      dot(state.heli.x, state.heli.z, 3, '#ff4444');
+    }
     // Player arrow, rotated to the player's heading.
     const [px, pz] = toMap(state.player.x, state.player.z);
     ctx.save();
@@ -150,6 +161,11 @@ export function createHud() {
       if (on) setText(els.ammoText, 'ammo', `${mag} / ${reserve === Infinity ? '∞' : reserve}`);
     },
     setCrosshair(on) { els.crosshair.style.display = on ? 'block' : 'none'; },
+    /** Flash a hit marker over the crosshair when a shot lands. */
+    hitmarker() {
+      els.hitmarker.style.opacity = '1';
+      window.setTimeout(() => { els.hitmarker.style.opacity = '0'; }, 130);
+    },
     setDamage(v) { els.damage.style.opacity = String(Math.max(0, Math.min(1, v))); },
     setHint(text) { setText(els.hint, 'hint', text); },
     showStart(hasSave) {

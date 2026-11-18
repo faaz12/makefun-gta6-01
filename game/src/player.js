@@ -41,6 +41,7 @@ export function createPlayer(scene) {
     vx: 0, vz: 0, health: PLAYER.health, armor: 0,
     inCar: null, walkPhase: 0, camDist: 8.5, shake: 0,
     speed: 0, // current planar speed, for HUD/telemetry
+    topMul: 1, // Engine Tune upgrade: 1.1 when owned (set by the game loop)
   };
   return player;
 }
@@ -66,7 +67,7 @@ export function updatePlayer(player, input, dt, city, camera) {
   applyMouse(player, mouse.dx, mouse.dy);
   if (player.inCar) {
     const car = player.inCar;
-    const hit = driveCar(car, input, dt, city, null);
+    const hit = driveCar(car, input, dt, city, null, player.topMul ?? 1);
     player.x = car.x;
     player.z = car.z;
     player.yaw = car.yaw;

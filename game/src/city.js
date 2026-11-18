@@ -177,6 +177,64 @@ export function buildCity(random) {
   addBuilding(225, -225, 26, 26, 22, 1, 'policeHQ');
   addBuilding(-225, 225, 30, 16, 14, 5, 'marina');
 
+  // Painted name signs on the landmark fronts, so the story places read
+  // as places instead of anonymous towers.
+  function labelTexture(text, bgHex) {
+    const c = document.createElement('canvas');
+    c.width = 256;
+    c.height = 64;
+    const g = c.getContext('2d');
+    g.fillStyle = `#${bgHex.toString(16).padStart(6, '0')}`;
+    g.fillRect(0, 0, 256, 64);
+    g.fillStyle = '#ffffff';
+    g.font = 'bold 30px system-ui, sans-serif';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText(text, 128, 34);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
+  function addSign(text, x, y, z, w, bgHex) {
+    const sign = new THREE.Mesh(
+      new THREE.BoxGeometry(w, w / 4, 0.12),
+      new THREE.MeshBasicMaterial({ map: labelTexture(text, bgHex) }),
+    );
+    sign.position.set(x, y, z);
+    scene.add(sign);
+    return sign;
+  }
+  addSign('SOLMAR HOTEL', -225, 10, -214.8, 16, 0x8a2ad8);
+  addSign('HARBOR BANK', 225, 9, 240.2, 14, 0x2a6fd8);
+  addSign('PD HQ', 225, 8, -211.8, 10, 0x1a2a44);
+  addSign('MARINA', -225, 7, 233.2, 12, 0x2a8a4a);
+
+  // The Sunset Diner (Job 6): a roadside stall with a neon-style sign at
+  // the downtown corner, so Lena's meeting spot is a visible place.
+  const diner = new THREE.Group();
+  const dinerCounter = new THREE.Mesh(
+    new THREE.BoxGeometry(4.2, 1.1, 2.0),
+    new THREE.MeshLambertMaterial({ color: 0x8a7a5a }),
+  );
+  dinerCounter.position.y = 0.55;
+  diner.add(dinerCounter);
+  const dinerAwning = new THREE.Mesh(
+    new THREE.BoxGeometry(4.6, 0.12, 2.8),
+    new THREE.MeshLambertMaterial({ color: 0xe07820 }),
+  );
+  dinerAwning.position.set(0, 2.4, 0);
+  dinerAwning.rotation.x = 0.22;
+  diner.add(dinerAwning);
+  const dinerSign = new THREE.Mesh(
+    new THREE.BoxGeometry(4.4, 1.0, 0.1),
+    new THREE.MeshBasicMaterial({ map: labelTexture('SUNSET DINER', 0xe07820) }),
+  );
+  dinerSign.position.set(0, 3.1, 0);
+  diner.add(dinerSign);
+  diner.rotation.y = Math.PI / 2;
+  diner.position.set(128, 0, 52);
+  scene.add(diner);
+
   // Palms: beach row + scattered sidewalk palms.
   const trunkMat = new THREE.MeshLambertMaterial({ color: 0x8a6a42 });
   const leafMat = new THREE.MeshLambertMaterial({ color: 0x3f9e4d });
@@ -212,6 +270,12 @@ export function buildCity(random) {
     scene.add(dock);
     const boat = new THREE.Mesh(new THREE.BoxGeometry(7, 1.6, 3), new THREE.MeshLambertMaterial({ color: pick(random, [0xe8e8e8, 0x2a6fd8, 0xd82a2a]) }));
     boat.position.set(-CITY.half - 46, 0.9, -112 + i * 110);
+    scene.add(boat);
+  }
+  // Two more boats moored off the docks, so the marina reads as a harbour.
+  for (const bz of [-60, 160]) {
+    const boat = new THREE.Mesh(new THREE.BoxGeometry(7, 1.6, 3), new THREE.MeshLambertMaterial({ color: pick(random, [0xe8e8e8, 0x2a6fd8, 0xd82a2a]) }));
+    boat.position.set(-CITY.half - 52, 0.9, bz);
     scene.add(boat);
   }
 
@@ -256,12 +320,33 @@ export function buildCity(random) {
   loops.push([{ x: -3.6, z: -240 }, { x: -3.6, z: 240 }, { x: 3.6, z: 240 }, { x: 3.6, z: -240 }]);
   loops.push([{ x: -123.6, z: -240 }, { x: -123.6, z: 240 }, { x: -116.4, z: 240 }, { x: -116.4, z: -240 }]);
 
+  // Sun cycle: the in-game clock runs 09:00 onward, half a minute per
+  // second of play — the light warms toward noon and cools again, so the
+  // city reads differently as the story advances.
+  const sunLow = new THREE.Color(0xffc98a);
+  const sunHigh = new THREE.Color(0xfff2cf);
+  const fogLow = new THREE.Color(0xe8c9a0);
+  const fogHigh = new THREE.Color(0x9fc8e0);
+  const skyLow = new THREE.Color(0xe8b98a);
+  const skyHigh = new THREE.Color(0x87c5e8);
+  const sunCol = new THREE.Color();
+  const fogCol = new THREE.Color();
+  const skyCol = new THREE.Color();
+
   function update(dt, time) {
     ocean.position.y = -0.4 + Math.sin(time * 0.5) * 0.12;
     beacon.material.opacity = 0.28 + Math.sin(time * 3) * 0.1;
     for (let i = 0; i < palms.length; i += 1) {
       palms[i].rotation.z = Math.sin(time * 0.8 + i) * 0.03;
     }
+    // Day fraction: 1 at noon, 0 at 06:00/18:00 (the story starts 09:00).
+    const hour = ((9 * 60 + time * 0.5) / 60) % 24;
+    const elev = Math.max(0, Math.min(1, Math.sin(((hour - 6) / 12) * Math.PI)));
+    sun.intensity = 1.5 + 0.6 * elev;
+    sun.color.copy(sunCol.lerpColors(sunLow, sunHigh, elev));
+    hemi.intensity = 0.85 + 0.35 * elev;
+    scene.fog.color.copy(fogCol.lerpColors(fogLow, fogHigh, elev));
+    scene.background.copy(skyCol.lerpColors(skyLow, skyHigh, elev));
   }
 
   return {

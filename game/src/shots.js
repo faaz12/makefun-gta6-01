@@ -30,11 +30,12 @@ export function stageShot(name, game, city, hud, input) {
     return;
   }
   if (name === 'chase') {
-    // Cover: three-star chase in the stolen Comet GT down the main avenue,
-    // police cruisers on the tail, mission objective on the HUD.
+    // Cover: four-star chase in the stolen Comet GT down the main avenue,
+    // police cruisers on the tail and the PD helicopter overhead, mission
+    // objective on the HUD.
     dbg.startStory();
     dbg.setMission(2, 'hot'); // Job 3 — Lose the Tail
-    dbg.setWanted(3);
+    dbg.setWanted(4);
     dbg.setCash(1840);
     dbg.teleport(-3.6, -120, 0);
     dbg.putInCar(dbg.comet());
@@ -43,21 +44,31 @@ export function stageShot(name, game, city, hud, input) {
     dbg.comet().yaw = 0;
     dbg.spawnPolice(3);
     driveForward(game, input, 5);
+    // Put Air One in frame for the cover: the helicopter chases from
+    // behind in the real game, so hover it ahead of the car, low enough to
+    // read against the sky with its spotlight on the avenue.
+    const h = dbg.heli();
+    h.x = game.player.x + Math.sin(game.player.yaw) * 55;
+    h.z = game.player.z + Math.cos(game.player.yaw) * 55;
+    h.y = 22;
+    h.mesh.position.set(h.x, h.y, h.z);
+    h.mesh.rotation.y = game.player.yaw + Math.PI;
     hud.hideDialog();
     return;
   }
   if (name === 'mission') {
-    // Job 5 at Harbor Bank: Deke on foot, Harbor Crew ahead, two stars,
-    // one crew member already down from a real pistol shot.
+    // Job 10 at the Marina Showdown: Deke on foot east of the marina, the
+    // Harbor Crew spread along the docks (cover layout, two lieutenants),
+    // two stars, one crew member already down from a real pistol shot.
     dbg.startStory();
-    dbg.setMission(4, 'go');
+    dbg.setMission(9, 'go');
     dbg.setWanted(2);
-    dbg.setCash(2450);
-    // Deke on the plaza southwest of Harbor Bank, close to the crew, facing them.
-    dbg.teleport(184, 232, Math.PI / 2);
-    dbg.spawnEnemies();
+    dbg.setCash(5200);
+    // Deke on the road east of the marina front, close to the crew, facing them.
+    dbg.teleport(-180, 210, -Math.PI / 2);
+    dbg.spawnEnemies({ x: -225, z: 225 }, 6, 'marina');
     game.missions.stage = 'fight';
-    game.player.camYaw = Math.PI / 2;
+    game.player.camYaw = Math.atan2(-225 - game.player.x, 225 - game.player.z);
     game.player.yaw = game.player.camYaw;
     // Real shots at the nearest crew member (through the game's combat),
     // re-aimed until one lands — a pedestrian can cross the line of fire.
@@ -75,14 +86,14 @@ export function stageShot(name, game, city, hud, input) {
     hud.hideDialog();
     return;
   }
-  // street (default): on foot downtown at the main intersection, traffic
-  // rolling past, pedestrians on the sidewalks, Job 1 on the HUD.
+  // street (default): on foot at the Bay Arms gun shop on the west avenue,
+  // the shop sign and buy prompt in frame, traffic rolling past, Job 1 on
+  // the HUD.
   dbg.startStory();
   dbg.setMission(0, 'go');
   dbg.setCash(40);
-  // On the main avenue, facing down the road: buildings, traffic and
-  // pedestrians in frame, no wall in the way.
-  dbg.teleport(0, -40, 0);
-  walkForward(game, input, 2.5);
+  // East of the stall, facing it: the sign, the counter and the E prompt.
+  dbg.teleport(-160, 60, -Math.PI / 2);
+  walkForward(game, input, 1.2);
   hud.hideDialog();
 }

@@ -24,6 +24,7 @@
   #ammo { position: absolute; right: 16px; bottom: 110px; padding: 6px 12px; font-size: 15px; display: none; }
   #toast { position: absolute; left: 50%; bottom: 132px; transform: translateX(-50%); padding: 8px 18px; font-size: 16px; font-weight: 600; opacity: 0; transition: opacity .3s; white-space: nowrap; }
   #crosshair { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; display: none; }
+  #hitmarker { position: absolute; left: 50%; top: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; display: block; font-size: 26px; font-weight: 800; line-height: 30px; text-align: center; color: #ffd23e; opacity: 0; transition: opacity .12s; pointer-events: none; }
   #crosshair::before, #crosshair::after { content: ""; position: absolute; background: #fff; box-shadow: 0 0 3px #000; }
   #crosshair::before { left: 10px; top: 0; width: 2px; height: 22px; }
   #crosshair::after { left: 0; top: 10px; width: 22px; height: 2px; }
@@ -44,7 +45,7 @@
 </style>
 </head>
 <body>
-<canvas id="scene" aria-label="Solmar Bay: an open-world crime game. Drive, walk, steal cars, outrun the police and finish missions."></canvas>
+<canvas id="scene" aria-label="Solmar Bay: an open-world crime game. Drive, walk, steal cars, outrun the police helicopter, shop, stash cars in the garage and finish ten missions."></canvas>
 <div id="hud">
   <div id="stats" class="panel"><span class="cash" id="cash">$0</span><span id="rep"></span><br><span id="healthtext">Health 100</span><div id="healthbar"><div id="healthfill"></div></div><span id="armorline"></span></div>
   <div id="wanted" class="panel"><span id="stars">☆☆☆☆☆</span></div>
@@ -52,9 +53,10 @@
   <div id="objective" class="panel"><span class="gold">◆</span> <span id="objtext">Welcome to Solmar Bay</span></div>
   <canvas id="minimap" width="190" height="190"></canvas>
   <div id="speedo" class="panel"><span class="big" id="speed">0</span> km/h<br><span id="carname"></span></div>
-  <div id="ammo" class="panel">🔫 <span id="ammotext">12 / ∞</span></div>
+  <div id="ammo" class="panel">🔫 <span id="ammotext">12 / 48</span></div>
   <div id="toast" class="panel"></div>
   <div id="crosshair"></div>
+  <div id="hitmarker">✕</div>
   <div id="hint" class="panel">WASD move · Mouse look · E enter car · Click shoot · R reload · M mission · P pause</div>
   <div id="dialog" class="panel"></div>
 </div>
@@ -66,11 +68,14 @@
     <p class="story">"You washed up in Solmar Bay with $40 and a borrowed name. Rico Vane runs the
     marina, the cops run the streets, and everybody in between owes somebody. Work the jobs,
     steal what you need, and don't let the Solmar Bay PD catch you holding it."</p>
-    <p><b>You are Danny "Deke" Marlowe</b>, a wheelman new in town. Five jobs stand between you
+    <p><b>You are Danny "Deke" Marlowe</b>, a wheelman new in town. Ten jobs stand between you
     and a clean slate: meet Rico, lift a Comet GT, lose a three-star tail, run a package across
-    town, and hit the Harbor Bank vault — then get out alive.</p>
-    <div class="keys">WASD — walk / drive &nbsp;·&nbsp; Mouse — look &nbsp;·&nbsp; E — steal / enter car &nbsp;·&nbsp; F — exit car<br>
-    Click — shoot &nbsp;·&nbsp; R — reload &nbsp;·&nbsp; Shift — sprint &nbsp;·&nbsp; Space — brake / handbrake &nbsp;·&nbsp; P — pause &nbsp;·&nbsp; M — mission info</div>
+    town, and hit the Harbor Bank vault — then meet Lena, run the docks, survive four-star
+    downtown heat with the police helicopter overhead, lift a Sunset Coupe, and settle the score
+    at the marina.</p>
+    <div class="keys">WASD — walk / drive &nbsp;·&nbsp; Mouse — look &nbsp;·&nbsp; E — steal car / shop / store car &nbsp;·&nbsp; F — exit car<br>
+    Click — shoot &nbsp;·&nbsp; R — reload &nbsp;·&nbsp; Shift — sprint &nbsp;·&nbsp; Space — brake / handbrake &nbsp;·&nbsp; P — pause &nbsp;·&nbsp; M — mission info<br>
+    1–4 — buy safehouse upgrades (Extended Mag · Fast Hands · Armor Plating · Engine Tune) &nbsp;·&nbsp; Bay Arms also sells pistol ammo</div>
     <button id="play">▶ START STORY</button>
     <button id="continue" class="alt" style="display:none">↻ CONTINUE SAVE</button>
     <button id="freeroam" class="alt">FREE ROAM</button>

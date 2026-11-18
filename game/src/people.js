@@ -47,18 +47,20 @@ function makeFigure(shirt, skin, isCop) {
 export function createPerson(scene, random, x, z, opts = {}) {
   const isCop = !!opts.cop;
   const isEnemy = !!opts.enemy;
-  const mesh = makeFigure(isCop ? 0x1a2a44 : isEnemy ? 0x3a3a3a : pick(random, SHIRTS), pick(random, SKINS), isCop);
+  const mesh = makeFigure(isCop ? 0x1a2a44 : isEnemy ? (opts.shirt ?? 0x3a3a3a) : pick(random, SHIRTS), pick(random, SKINS), isCop);
   mesh.position.set(x, 0, z);
   scene.add(mesh);
   const person = {
     mesh, x, z, yaw: range(random, 0, Math.PI * 2),
-    name: isCop ? pick(random, COP_NAMES) : isEnemy ? 'Harbor Crew' : pick(random, PED_NAMES),
-    hp: isEnemy ? 80 : isCop ? 70 : 40,
+    name: isCop ? pick(random, COP_NAMES) : isEnemy ? (opts.name ?? 'Harbor Crew') : pick(random, PED_NAMES),
+    hp: opts.hp ?? (isEnemy ? 80 : isCop ? 70 : 40),
     speed: isCop ? 5.2 : isEnemy ? 3.6 : range(random, 1.2, 2.2),
     alive: true, cop: isCop, enemy: isEnemy,
     walkPhase: random() * 6,
     target: null, flee: 0, shootTimer: range(random, 0.4, 1),
     waypoint: { x, z },
+    // Combat polish: hit flinch, and cover repositioning for armed crews.
+    hitReact: 0, coverTimer: range(random, 2.5, 4.5), coverTarget: null, home: { x, z },
   };
   newWaypoint(person, random);
   return person;
@@ -71,13 +73,27 @@ function newWaypoint(person, random) {
   else person.waypoint = { x: along, z: r + 9 };
 }
 
-export function updatePedestrian(p, dt, random, city, playerPos, gunfire) {
+/** Pedestrians stroll — but they run from gunfire, and from a police car
+ *  screaming past with its siren on. `policeCars` is the live PD list. */
+export function updatePedestrian(p, dt, random, city, playerPos, gunfire, policeCars) {
   if (!p.alive) return;
-  if (gunfire && Math.hypot(p.x - playerPos.x, p.z - playerPos.z) < 26) p.flee = 3;
+  // Nearest police car close by is a panic trigger, same as gunfire.
+  let threat = null;
+  if (policeCars) {
+    let bestD = 22;
+    for (const c of policeCars) {
+      const d = Math.hypot(c.x - p.x, c.z - p.z);
+      if (d < bestD) { bestD = d; threat = c; }
+    }
+  }
+  if (threat) p.flee = Math.max(p.flee, 1.5);
+  else if (gunfire && Math.hypot(p.x - playerPos.x, p.z - playerPos.z) < 26) p.flee = 3;
   if (p.flee > 0) {
     p.flee -= dt;
-    const dx = p.x - playerPos.x;
-    const dz = p.z - playerPos.z;
+    // Flee from the threat itself (a cop car), or from the player (gunfire).
+    const from = threat || playerPos;
+    const dx = p.x - from.x;
+    const dz = p.z - from.z;
     const d = Math.hypot(dx, dz) || 1;
     p.yaw = Math.atan2(dx / d, dz / d);
     stepPerson(p, dt, city, p.speed * 2.2);
@@ -106,6 +122,31 @@ function stepPerson(p, dt, city, speed) {
   p.mesh.userData.armR.rotation.x = swing * 0.7;
   p.mesh.position.set(p.x, Math.abs(Math.sin(p.walkPhase)) * 0.05, p.z);
   p.mesh.rotation.y = p.yaw;
+}
+
+/**
+ * Walk an armed crew member toward a point (cover repositioning). Returns
+ * true when it arrives. Movement is the same walk cycle as pedestrians.
+ */
+export function movePersonToward(p, tx, tz, dt, city) {
+  const dx = tx - p.x;
+  const dz = tz - p.z;
+  const d = Math.hypot(dx, dz);
+  if (d < 1.5) return true;
+  const want = Math.atan2(dx, dz);
+  p.yaw += clamp(angleDiff(p.yaw, want), -3 * dt, 3 * dt);
+  stepPerson(p, dt, city, p.speed);
+  return Math.hypot(tx - p.x, tz - p.z) < 1.5;
+}
+
+/** Pick a fresh cover point near the crew member's home ground. */
+export function pickCoverPoint(p, random, city) {
+  for (let i = 0; i < 8; i += 1) {
+    const tx = p.home.x + range(random, -14, 14);
+    const tz = p.home.z + range(random, -14, 14);
+    if (!city.hitsBuilding(tx, tz, 1.2)) return { x: tx, z: tz };
+  }
+  return { x: p.home.x, z: p.home.z };
 }
 
 export function killPerson(p, scene) {
